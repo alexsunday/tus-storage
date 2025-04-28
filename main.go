@@ -23,10 +23,11 @@ import (
 var (
 	logger   = slog.New(slog.NewTextHandler(os.Stderr, nil))
 	redisUrl = flag.String("redis", "redis://localhost:6379/0", "redis url")
+	minioUrl = flag.String("minio", "http://localhost:9000", "minio url")
 	secret   = flag.String("secret", "", "secret key")
 )
 
-func loadStore() (*s3store.S3Store, error) {
+func loadStore(minioUrl string) (*s3store.S3Store, error) {
 	var ctx = context.Background()
 	s3Config, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
@@ -34,7 +35,7 @@ func loadStore() (*s3store.S3Store, error) {
 	}
 
 	var s3Client = s3.NewFromConfig(s3Config, func(o *s3.Options) {
-		var endpoint = "http://minio:9000"
+		var endpoint = minioUrl
 		o.BaseEndpoint = &endpoint
 		o.UsePathStyle = true
 	})
@@ -65,8 +66,12 @@ func main() {
 		logger.Error("secret key is required")
 		return
 	}
+	if *minioUrl == "" {
+		logger.Error("minio url is required")
+		return
+	}
 
-	store, err := loadStore()
+	store, err := loadStore(*minioUrl)
 	// store, err := loadDebugStore()
 	if err != nil {
 		logger.Error("unable to load store", "error", err)
